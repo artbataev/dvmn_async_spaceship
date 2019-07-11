@@ -84,6 +84,7 @@ async def animate_spaceship(frames):
 
 async def run_spaceship(canvas, row, column):
     global spaceship_frame
+    global coroutines
     # find shift to draw text the way, when (row, column) is the center
     init_row_shift_x2, init_col_shift_x2 = get_frame_size(spaceship_frame)
     max_row, max_col = canvas.getmaxyx()
@@ -98,17 +99,20 @@ async def run_spaceship(canvas, row, column):
         if prev_frame is not None:
             draw_frame(canvas, cur_row, cur_col, prev_frame, negative=True)
 
-        row_shift, col_shift, is_space = read_controls(canvas)
-        row_speed, column_speed = update_speed(row_speed, column_speed, row_shift, col_shift)
-        row, column = row + row_speed, column + column_speed
-
-        # limit ship position
         frame_rows, frame_cols = get_frame_size(spaceship_frame)
+        row_shift, col_shift, is_space = read_controls(canvas)
+
+        row_speed, column_speed = update_speed(row_speed, column_speed, row_shift, col_shift)
+        if is_space:  # cannon shot
+            coroutines.append(fire(canvas, cur_row, cur_col + frame_cols // 2))
+
+        row, column = row + row_speed, column + column_speed
         cur_row = limit_coordinate(cur_row + row_shift, max_row - frame_rows)
         cur_col = limit_coordinate(cur_col + col_shift, max_col - frame_cols)
 
         prev_frame = spaceship_frame
         draw_frame(canvas, cur_row, cur_col, spaceship_frame)
+
         await sleep()
 
 
