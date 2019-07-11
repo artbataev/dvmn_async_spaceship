@@ -154,7 +154,7 @@ def draw(canvas):
     coroutines.append(animate_spaceship(spaceship_frames))
     coroutines.append(run_spaceship(canvas, max_row // 2, max_col // 2))
 
-    garbage_frames = get_frames_from_files(ANIMATIONS_PATH.rglob("trash_*.txt"))
+    garbage_frames = get_frames_from_files(ANIMATIONS_PATH.rglob("garbage/*.txt"))
     coroutines.append(fill_orbit_with_garbage(canvas, garbage_frames))
 
     coroutines.append(show_obstacles(canvas, obstacles))
