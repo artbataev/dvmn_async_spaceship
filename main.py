@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 from curses_tools import draw_frame, read_controls, get_frame_size
+from obstacles import show_obstacles
 from physics import update_speed
 from space_garbage import fly_garbage
 
@@ -18,6 +19,7 @@ BASE_PATH = Path(__file__).parent
 ANIMATIONS_PATH = BASE_PATH / "animations"
 
 coroutines = []
+obstacles = []
 spaceship_frame = ""
 
 
@@ -39,9 +41,10 @@ async def sleep(tics=1):
 
 
 async def fill_orbit_with_garbage(canvas, garbage_frames):
+    global obstacles
     _, max_col = canvas.getmaxyx()
     while True:
-        coroutines.append(fly_garbage(canvas, random.randint(0, max_col), random.choice(garbage_frames)))
+        coroutines.append(fly_garbage(canvas, random.randint(0, max_col), random.choice(garbage_frames), obstacles))
         await sleep(random.randint(5, 15))
 
 
@@ -133,6 +136,7 @@ async def blink(canvas, row, column, symbol='*'):
 
 def draw(canvas):
     global coroutines
+    global obstacles
 
     curses.curs_set(False)  # hide cursor
 
@@ -153,6 +157,7 @@ def draw(canvas):
     garbage_frames = get_frames_from_files(ANIMATIONS_PATH.rglob("trash_*.txt"))
     coroutines.append(fill_orbit_with_garbage(canvas, garbage_frames))
 
+    coroutines.append(show_obstacles(canvas, obstacles))
     canvas.nodelay(True)
 
     while True:
