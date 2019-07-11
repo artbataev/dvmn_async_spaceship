@@ -19,18 +19,6 @@ ANIMATIONS_PATH = BASE_PATH / "animations"
 coroutines = []
 
 
-def limit_coordinate(coordinate, max_coordinate):
-    return max(0, min(coordinate, max_coordinate))
-
-
-async def fill_orbit_with_garbage(canvas, garbage_frames):
-    _, max_col = canvas.getmaxyx()
-    while True:
-        coroutines.append(fly_garbage(canvas, random.randint(0, max_col), random.choice(garbage_frames)))
-        for _ in range(random.randint(5, 15)):
-            await asyncio.sleep(0)
-
-
 def get_frames_from_files(files):
     frames = []
     for file in files:
@@ -39,16 +27,32 @@ def get_frames_from_files(files):
     return frames
 
 
+def limit_coordinate(coordinate, max_coordinate):
+    return max(0, min(coordinate, max_coordinate))
+
+
+async def sleep(tics=1):
+    for _ in range(tics):
+        await asyncio.sleep(0)
+
+
+async def fill_orbit_with_garbage(canvas, garbage_frames):
+    _, max_col = canvas.getmaxyx()
+    while True:
+        coroutines.append(fly_garbage(canvas, random.randint(0, max_col), random.choice(garbage_frames)))
+        await sleep(random.randint(5, 15))
+
+
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     """Display animation of gun shot. Direction and speed can be specified."""
 
     row, column = start_row, start_column
 
     canvas.addstr(round(row), round(column), '*')
-    await asyncio.sleep(0)
+    await sleep()
 
     canvas.addstr(round(row), round(column), 'O')
-    await asyncio.sleep(0)
+    await sleep()
     canvas.addstr(round(row), round(column), ' ')
 
     row += rows_speed
@@ -63,7 +67,7 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
 
     while 0 < row < max_row and 0 < column < max_column:
         canvas.addstr(round(row), round(column), symbol)
-        await asyncio.sleep(0)
+        await sleep()
         canvas.addstr(round(row), round(column), ' ')
         row += rows_speed
         column += columns_speed
@@ -88,26 +92,22 @@ async def animate_spaceship(canvas, row, column, frames):
         cur_col = limit_coordinate(cur_col + col_shift, max_col - frame_cols)
         prev_frame = frame
         draw_frame(canvas, cur_row, cur_col, frame)
-        await asyncio.sleep(0)
+        await sleep()
 
 
 async def blink(canvas, row, column, symbol='*'):
     while True:
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(random.randint(1, 10)):
-            await asyncio.sleep(0)
+        await sleep(random.randint(1, 10))
 
         canvas.addstr(row, column, symbol)
-        for _ in range(random.randint(1, 3)):
-            await asyncio.sleep(0)
+        await sleep(random.randint(1, 3))
 
         canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(random.randint(1, 5)):
-            await asyncio.sleep(0)
+        await sleep(random.randint(1, 5))
 
         canvas.addstr(row, column, symbol)
-        for _ in range(random.randint(1, 3)):
-            await asyncio.sleep(0)
+        await sleep(random.randint(1, 3))
 
 
 def draw(canvas):
