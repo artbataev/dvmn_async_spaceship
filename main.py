@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 from curses_tools import draw_frame, read_controls, get_frame_size
+from physics import update_speed
 from space_garbage import fly_garbage
 
 TIC_TIMEOUT = 0.1
@@ -17,6 +18,7 @@ BASE_PATH = Path(__file__).parent
 ANIMATIONS_PATH = BASE_PATH / "animations"
 
 coroutines = []
+spaceship_frame = ""
 
 
 def get_frames_from_files(files):
@@ -73,25 +75,40 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         column += columns_speed
 
 
-async def animate_spaceship(canvas, row, column, frames):
+async def animate_spaceship(frames):
+    global spaceship_frame
+    for frame in itertools.cycle(frames):
+        spaceship_frame = frame
+        await sleep()
+
+
+async def run_spaceship(canvas, row, column):
+    global spaceship_frame
     # find shift to draw text the way, when (row, column) is the center
-    init_row_shift_x2, init_col_shift_x2 = get_frame_size(frames[0])
+    init_row_shift_x2, init_col_shift_x2 = get_frame_size(spaceship_frame)
     max_row, max_col = canvas.getmaxyx()
 
     cur_row = limit_coordinate(row - init_row_shift_x2 // 2, max_row)
     cur_col = limit_coordinate(column - init_col_shift_x2 // 2, max_col)
 
+    row_speed, column_speed = 0, 0
+
     prev_frame = None
-    for frame in itertools.cycle(frames):
+    while True:
         if prev_frame is not None:
             draw_frame(canvas, cur_row, cur_col, prev_frame, negative=True)
 
         row_shift, col_shift, is_space = read_controls(canvas)
-        frame_rows, frame_cols = get_frame_size(frame)
+        row_speed, column_speed = update_speed(row_speed, column_speed, row_shift, col_shift)
+        row, column = row + row_speed, column + column_speed
+
+        # limit ship position
+        frame_rows, frame_cols = get_frame_size(spaceship_frame)
         cur_row = limit_coordinate(cur_row + row_shift, max_row - frame_rows)
         cur_col = limit_coordinate(cur_col + col_shift, max_col - frame_cols)
-        prev_frame = frame
-        draw_frame(canvas, cur_row, cur_col, frame)
+
+        prev_frame = spaceship_frame
+        draw_frame(canvas, cur_row, cur_col, spaceship_frame)
         await sleep()
 
 
@@ -126,7 +143,8 @@ def draw(canvas):
                    for _ in range(num_stars)]
 
     spaceship_frames = get_frames_from_files(sorted(ANIMATIONS_PATH.rglob("rocket_frame_*.txt")))
-    coroutines.append(animate_spaceship(canvas, max_row // 2, max_col // 2, spaceship_frames))
+    coroutines.append(animate_spaceship(spaceship_frames))
+    coroutines.append(run_spaceship(canvas, max_row // 2, max_col // 2))
 
     garbage_frames = get_frames_from_files(ANIMATIONS_PATH.rglob("trash_*.txt"))
     coroutines.append(fill_orbit_with_garbage(canvas, garbage_frames))
