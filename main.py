@@ -1,10 +1,12 @@
-import time
-import curses
 import asyncio
-import random
-from curses_tools import draw_frame, read_controls, get_frame_size
+import curses
 import itertools
+import random
+import time
 from pathlib import Path
+
+from curses_tools import draw_frame, read_controls, get_frame_size
+from space_garbage import fly_garbage
 
 TIC_TIMEOUT = 0.1
 STARS_SYMBOLS = "+*.:"
@@ -14,9 +16,27 @@ PADDING = 3
 BASE_PATH = Path(__file__).parent
 ANIMATIONS_PATH = BASE_PATH / "animations"
 
+coroutines = []
+
 
 def limit_coordinate(coordinate, max_coordinate):
     return max(0, min(coordinate, max_coordinate))
+
+
+async def fill_orbit_with_garbage(canvas, garbage_frames):
+    _, max_col = canvas.getmaxyx()
+    while True:
+        coroutines.append(fly_garbage(canvas, random.randint(0, max_col), random.choice(garbage_frames)))
+        for _ in range(random.randint(5, 15)):
+            await asyncio.sleep(0)
+
+
+def get_frames_from_files(files):
+    frames = []
+    for file in files:
+        with open(file, "r", encoding="utf-8") as f:
+            frames.append(f.read())
+    return frames
 
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
@@ -91,24 +111,26 @@ async def blink(canvas, row, column, symbol='*'):
 
 
 def draw(canvas):
+    global coroutines
+
     curses.curs_set(False)  # hide cursor
 
     max_row, max_col = canvas.getmaxyx()
     num_stars = random.randint(MIN_NUM_STARS, MAX_NUM_STARS)
 
-    coroutines = [fire(canvas, max_row // 2, max_col // 2)]
+    coroutines.append(fire(canvas, max_row // 2, max_col // 2))
     coroutines += [blink(canvas,
                          random.randint(PADDING, max_row - PADDING),
                          random.randint(PADDING, max_col - PADDING),
                          symbol=random.choice(STARS_SYMBOLS))
                    for _ in range(num_stars)]
 
-    spaceship_frames = []
-    for file in sorted(ANIMATIONS_PATH.rglob("rocket_frame_*.txt")):
-        with open(file, "r", encoding="utf-8") as f:
-            spaceship_frames.append(f.read())
+    spaceship_frames = get_frames_from_files(sorted(ANIMATIONS_PATH.rglob("rocket_frame_*.txt")))
     coroutines.append(animate_spaceship(canvas, max_row // 2, max_col // 2, spaceship_frames))
-    
+
+    garbage_frames = get_frames_from_files(ANIMATIONS_PATH.rglob("trash_*.txt"))
+    coroutines.append(fill_orbit_with_garbage(canvas, garbage_frames))
+
     canvas.nodelay(True)
 
     while True:
