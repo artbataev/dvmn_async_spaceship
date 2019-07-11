@@ -20,6 +20,7 @@ ANIMATIONS_PATH = BASE_PATH / "animations"
 
 coroutines = []
 obstacles = []
+obstacles_in_last_collisions = []
 spaceship_frame = ""
 
 
@@ -42,14 +43,18 @@ async def sleep(tics=1):
 
 async def fill_orbit_with_garbage(canvas, garbage_frames):
     global obstacles
+    global obstacles_in_last_collisions
     _, max_col = canvas.getmaxyx()
     while True:
-        coroutines.append(fly_garbage(canvas, random.randint(0, max_col), random.choice(garbage_frames), obstacles))
+        coroutines.append(fly_garbage(canvas, random.randint(0, max_col), random.choice(garbage_frames), obstacles,
+                                      obstacles_in_last_collisions))
         await sleep(random.randint(5, 15))
 
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     """Display animation of gun shot. Direction and speed can be specified."""
+    global obstacles
+    global obstacles_in_last_collisions
 
     row, column = start_row, start_column
 
@@ -71,6 +76,10 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     curses.beep()
 
     while 0 < row < max_row and 0 < column < max_column:
+        for obstacle in obstacles:
+            if obstacle.has_collision(row, column):
+                obstacles_in_last_collisions.append(obstacle)
+                return
         canvas.addstr(round(row), round(column), symbol)
         await sleep()
         canvas.addstr(round(row), round(column), ' ')
