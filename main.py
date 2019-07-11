@@ -112,6 +112,12 @@ async def run_spaceship(canvas, row, column):
             draw_frame(canvas, cur_row, cur_col, prev_frame, negative=True)
 
         frame_rows, frame_cols = get_frame_size(spaceship_frame)
+
+        for obstacle in obstacles:
+            if obstacle.has_collision(cur_row, cur_col, frame_rows, frame_cols):
+                coroutines.append(show_gameover(canvas))
+                return
+
         row_shift, col_shift, is_space = read_controls(canvas)
 
         row_speed, column_speed = update_speed(row_speed, column_speed, row_shift, col_shift)
@@ -141,6 +147,15 @@ async def blink(canvas, row, column, symbol='*'):
 
         canvas.addstr(row, column, symbol)
         await sleep(random.randint(1, 3))
+
+
+async def show_gameover(canvas):
+    game_over_frame = get_frames_from_files(ANIMATIONS_PATH.glob("game_over.txt"))[0]
+    frame_rows, frame_cols = get_frame_size(game_over_frame)
+    max_row, max_col = canvas.getmaxyx()
+    while True:
+        draw_frame(canvas, max_row / 2 - frame_rows / 2, max_col / 2 - frame_cols / 2, game_over_frame)
+        await sleep()
 
 
 def draw(canvas):
