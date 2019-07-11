@@ -7,7 +7,6 @@ from pathlib import Path
 
 from curses_tools import draw_frame, read_controls, get_frame_size
 from game_scenario import get_garbage_delay_tics, PHRASES
-from obstacles import show_obstacles
 from physics import update_speed
 from space_garbage import fly_garbage
 
@@ -27,9 +26,6 @@ coroutines = []
 obstacles = []
 obstacles_in_last_collisions = []
 spaceship_frame = ""
-
-
-# logging.basicConfig(filename="game_log.log", level=logging.INFO)
 
 
 def get_frames_from_files(files):
@@ -111,9 +107,10 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     curses.beep()
 
     while 0 < row < max_row and 0 < column < max_column:
-        for obstacle in obstacles:
+        for obstacle in obstacles.copy():  # using .copy() because list can be modified
             if obstacle.has_collision(row, column):
                 obstacles_in_last_collisions.append(obstacle)
+                obstacles.remove(obstacle)
                 return
         canvas.addstr(round(row), round(column), symbol)
         await sleep()
@@ -136,35 +133,35 @@ async def run_spaceship(canvas, row, column):
     init_row_shift_x2, init_col_shift_x2 = get_frame_size(spaceship_frame)
     max_row, max_col = canvas.getmaxyx()
 
-    cur_row = limit_coordinate(row - init_row_shift_x2 // 2, max_row)
-    cur_col = limit_coordinate(column - init_col_shift_x2 // 2, max_col)
+    # fix position to center spaceship
+    row = limit_coordinate(row - init_row_shift_x2 // 2, max_row)
+    column = limit_coordinate(column - init_col_shift_x2 // 2, max_col)
 
     row_speed, column_speed = 0, 0
 
     prev_frame = None
     while True:
         if prev_frame is not None:
-            draw_frame(canvas, cur_row, cur_col, prev_frame, negative=True)
+            draw_frame(canvas, row, column, prev_frame, negative=True)
 
         frame_rows, frame_cols = get_frame_size(spaceship_frame)
 
         for obstacle in obstacles:
-            if obstacle.has_collision(cur_row, cur_col, frame_rows, frame_cols):
+            if obstacle.has_collision(row, column, frame_rows, frame_cols):
                 coroutines.append(show_gameover(canvas))
                 return
 
         row_shift, col_shift, is_space = read_controls(canvas)
-
         row_speed, column_speed = update_speed(row_speed, column_speed, row_shift, col_shift)
-        if is_space:  # cannon shot
-            coroutines.append(fire(canvas, cur_row, cur_col + frame_cols // 2))
 
-        row, column = row + row_speed, column + column_speed
-        cur_row = limit_coordinate(cur_row + row_shift, max_row - frame_rows)
-        cur_col = limit_coordinate(cur_col + col_shift, max_col - frame_cols)
+        row = limit_coordinate(row + row_speed, max_row - frame_rows)
+        column = limit_coordinate(column + column_speed, max_col - frame_cols)
 
         prev_frame = spaceship_frame
-        draw_frame(canvas, cur_row, cur_col, spaceship_frame)
+        draw_frame(canvas, row, column, spaceship_frame)
+
+        if is_space:  # cannon shot
+            coroutines.append(fire(canvas, row, column + frame_cols // 2))
 
         await sleep()
 
@@ -218,7 +215,7 @@ def draw(canvas):
     garbage_frames = get_frames_from_files(ANIMATIONS_PATH.rglob("garbage/*.txt"))
     coroutines.append(fill_orbit_with_garbage(canvas, garbage_frames))
 
-    coroutines.append(show_obstacles(canvas, obstacles))
+    # coroutines.append(show_obstacles(canvas, obstacles))  # for debugging purpose
     canvas.nodelay(True)
 
     while True:
