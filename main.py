@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 from curses_tools import draw_frame, read_controls, get_frame_size
+from game_scenario import get_garbage_delay_tics, PHRASES
 from obstacles import show_obstacles
 from physics import update_speed
 from space_garbage import fly_garbage
@@ -18,10 +19,17 @@ PADDING = 3
 BASE_PATH = Path(__file__).parent
 ANIMATIONS_PATH = BASE_PATH / "animations"
 
+START_YEAR = 1957
+year = START_YEAR
+start_time = time.time()
+
 coroutines = []
 obstacles = []
 obstacles_in_last_collisions = []
 spaceship_frame = ""
+
+
+# logging.basicConfig(filename="game_log.log", level=logging.INFO)
 
 
 def get_frames_from_files(files):
@@ -41,14 +49,41 @@ async def sleep(tics=1):
         await asyncio.sleep(0)
 
 
+async def tick_game_time():
+    global start_time
+    global year
+    while True:
+        year = START_YEAR + int((time.time() - start_time) // 1.5)
+        await sleep()
+
+
+async def show_year_info(canvas):
+    def get_year_info_frame(year, phrase):
+        year_str = f"|| {year} | {phrase} ||"
+        year_str_len = len(year_str)
+        year_info_frame = "=" * year_str_len + "\n" + year_str + "\n" + "=" * year_str_len
+        return year_info_frame
+
+    phrase = PHRASES[START_YEAR]
+    while True:
+        if year in PHRASES:
+            phrase = PHRASES[year]
+        frame = get_year_info_frame(year, phrase)
+        draw_frame(canvas, 0, 0, frame)
+        canvas.syncup()  # needed to draw correctly
+        await sleep()
+        draw_frame(canvas, 0, 0, frame, negative=True)
+
+
 async def fill_orbit_with_garbage(canvas, garbage_frames):
     global obstacles
     global obstacles_in_last_collisions
+    global year
     _, max_col = canvas.getmaxyx()
     while True:
         coroutines.append(fly_garbage(canvas, random.randint(0, max_col), random.choice(garbage_frames), obstacles,
                                       obstacles_in_last_collisions))
-        await sleep(random.randint(5, 15))
+        await sleep(get_garbage_delay_tics(year) or 30)
 
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
@@ -167,6 +202,8 @@ def draw(canvas):
     max_row, max_col = canvas.getmaxyx()
     num_stars = random.randint(MIN_NUM_STARS, MAX_NUM_STARS)
 
+    coroutines.append(tick_game_time())
+    coroutines.append(show_year_info(canvas.derwin(max_row - PADDING, 0)))
     coroutines.append(fire(canvas, max_row // 2, max_col // 2))
     coroutines += [blink(canvas,
                          random.randint(PADDING, max_row - PADDING),
