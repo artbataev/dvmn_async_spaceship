@@ -19,8 +19,9 @@ BASE_PATH = Path(__file__).parent
 ANIMATIONS_PATH = BASE_PATH / "animations"
 
 START_YEAR = 1957
+START_TIME = time.monotonic()
+
 year = START_YEAR
-start_time = time.time()
 
 coroutines = []
 obstacles = []
@@ -28,11 +29,11 @@ obstacles_in_last_collisions = []
 spaceship_frame = ""
 
 
-def get_frames_from_files(files):
+def get_frames_from_files(filenames):
     frames = []
-    for file in files:
-        with open(file, "r", encoding="utf-8") as f:
-            frames.append(f.read())
+    for filename in filenames:
+        with open(filename, "r", encoding="utf-8") as file:
+            frames.append(file.read())
     return frames
 
 
@@ -46,10 +47,9 @@ async def sleep(tics=1):
 
 
 async def tick_game_time():
-    global start_time
     global year
     while True:
-        year = START_YEAR + int((time.time() - start_time) // 1.5)
+        year = START_YEAR + int((time.monotonic() - START_TIME) // 1.5)
         await sleep()
 
 
@@ -151,7 +151,7 @@ async def run_spaceship(canvas, row, column):
                 coroutines.append(show_gameover(canvas))
                 return
 
-        row_shift, col_shift, is_space = read_controls(canvas)
+        row_shift, col_shift, space_pressed = read_controls(canvas)
         row_speed, column_speed = update_speed(row_speed, column_speed, row_shift, col_shift)
 
         row = limit_coordinate(row + row_speed, max_row - frame_rows)
@@ -160,7 +160,7 @@ async def run_spaceship(canvas, row, column):
         prev_frame = spaceship_frame
         draw_frame(canvas, row, column, spaceship_frame)
 
-        if is_space:  # cannon shot
+        if space_pressed:  # cannon shot
             coroutines.append(fire(canvas, row, column + frame_cols // 2))
 
         await sleep()
