@@ -110,7 +110,6 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         for obstacle in obstacles.copy():  # using .copy() because list can be modified
             if obstacle.has_collision(row, column):
                 obstacles_in_last_collisions.append(obstacle)
-                obstacles.remove(obstacle)
                 return
         canvas.addstr(round(row), round(column), symbol)
         await sleep()

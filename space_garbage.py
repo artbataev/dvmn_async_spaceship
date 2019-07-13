@@ -20,6 +20,7 @@ async def fly_garbage(canvas, column, garbage_frame, obstacles, obstacles_in_las
     while row < rows_number:
         if obstacle in obstacles_in_last_collisions:
             obstacles_in_last_collisions.remove(obstacle)
+            obstacles.remove(obstacle)
             await explode(canvas, row, column)
             return
         obstacle.row = row
