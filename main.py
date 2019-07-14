@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import asyncio
 import curses
 import itertools
@@ -7,8 +9,11 @@ from pathlib import Path
 
 from curses_tools import draw_frame, read_controls, get_frame_size
 from game_scenario import get_garbage_delay_tics, PHRASES
+from obstacles import show_obstacles
 from physics import update_speed
 from space_garbage import fly_garbage
+
+SHOW_OBSTACLES = False
 
 TIC_TIMEOUT = 0.1
 STARS_SYMBOLS = "+*.:"
@@ -107,7 +112,7 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     curses.beep()
 
     while 0 < row < max_row and 0 < column < max_column:
-        for obstacle in obstacles.copy():  # using .copy() because list can be modified
+        for obstacle in obstacles:
             if obstacle.has_collision(row, column):
                 obstacles_in_last_collisions.append(obstacle)
                 return
@@ -214,7 +219,8 @@ def draw(canvas):
     garbage_frames = get_frames_from_files(ANIMATIONS_PATH.rglob("garbage/*.txt"))
     coroutines.append(fill_orbit_with_garbage(canvas, garbage_frames))
 
-    # coroutines.append(show_obstacles(canvas, obstacles))  # for debugging purpose
+    if SHOW_OBSTACLES:
+        coroutines.append(show_obstacles(canvas, obstacles))  # for debugging purpose
     canvas.nodelay(True)
 
     while True:
