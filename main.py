@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from curses_tools import draw_frame, read_controls, get_frame_size
+from explosion import explode
 from game_scenario import get_garbage_delay_tics, PHRASES
 from obstacles import show_obstacles
 from physics import update_speed
@@ -152,6 +153,9 @@ async def run_spaceship(canvas, row, column):
 
         for obstacle in obstacles:
             if obstacle.has_collision(row, column, frame_rows, frame_cols):
+                # game over
+                coroutines.append(explode(canvas, row + frame_rows / 2, column + frame_cols / 2))
+                await sleep(4)  # wait till the end of explosion
                 coroutines.append(show_gameover(canvas))
                 return
 
